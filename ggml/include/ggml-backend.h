@@ -430,7 +430,6 @@ extern "C" {
 
     // returns true for ops that may require additional memory for fleeting data on some backends,
     // i.e. the backend's get_alloc_size may return more than ggml_nbytes for the output tensor
-    GGML_API bool ggml_backend_op_alloc_size_may_expand(enum ggml_op op);
 
     // Tensor initialization
     GGML_API enum ggml_status ggml_backend_tensor_alloc(ggml_backend_buffer_t buffer, struct ggml_tensor * tensor, void * addr);

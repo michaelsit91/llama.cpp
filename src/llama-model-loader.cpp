@@ -951,7 +951,7 @@ static bool weight_buft_supported(const llama_hparams & hparams, ggml_tensor * w
         case GGML_OP_MUL_MAT_ID:
             {
                 // Used for either MoE expert routing or embedded adapter routing
-                const int n_ids_used = hparams.router_layer >= 0 ? 1 : hparams.n_expert_used();
+                const int n_ids_used = hparams.router_layer >= 0 ? 1 : hparams.n_expert_used_max();
                 GGML_ASSERT(n_ids_used > 0);
                 ggml_tensor * b = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, w->ne[0], n_ids_used, 512);
                 ggml_tensor * ids = ggml_new_tensor_2d(ctx, GGML_TYPE_I32, n_ids_used, 512);
@@ -964,7 +964,7 @@ static bool weight_buft_supported(const llama_hparams & hparams, ggml_tensor * w
             } break;
         case GGML_OP_ADD_ID:
             {
-                const int n_expert_used = hparams.n_expert_used();
+                const int n_expert_used = hparams.n_expert_used_max();
                 GGML_ASSERT(n_expert_used > 0);
                 ggml_tensor * a = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, w->ne[0], n_expert_used, 512);
                 ggml_tensor * c = ggml_new_tensor_2d(ctx, GGML_TYPE_I32, n_expert_used, 512);
@@ -1104,68 +1104,6 @@ bool llama_model_loader::lazy_read::add(const std::string & name, const ggml_ten
     }
 
     return true;
-}
-
-// declared in llama-model.h, which this file does not include
-const std::vector<std::pair<std::string, ggml_tensor *>> & llama_internal_get_tensor_map(const llama_model * model);
-
-struct ggml_tensor * llama_model_loader::borrow_shared_tensor(const LLM_TN_IMPL & tn, const std::initializer_list<int64_t> & ne) {
-    // checked first so no other tensor in any model pays a metadata lookup
-    if (tn.tensor != LLM_TENSOR_TOKEN_EMBD && tn.tensor != LLM_TENSOR_OUTPUT && tn.tensor != LLM_TENSOR_OUTPUT_NORM) {
-        return nullptr;
-    }
-
-    if (shared_target_tensors < 0) {
-        bool shared = false;
-        get_key(LLM_KV_NEXTN_SHARED_TARGET_TENSORS, shared, false);
-        shared_target_tensors = shared ? 1 : 0;
-    }
-    if (shared_target_tensors == 0) {
-        return nullptr;
-    }
-
-    const std::string name = tn.str();
-    if (get_weight(name.c_str()) != nullptr) {
-        return nullptr;
-    }
-
-    if (model_shared == nullptr) {
-        throw std::runtime_error(format("%s: this model is a draft head without its own '%s'; "
-                    "load it as a draft of its target model, not on its own", __func__, name.c_str()));
-    }
-
-    ggml_tensor * src = nullptr;
-    for (const auto & [n, t] : llama_internal_get_tensor_map(model_shared)) {
-        if (n == name) {
-            src = t;
-            break;
-        }
-    }
-    if (src == nullptr) {
-        throw std::runtime_error(format("%s: draft needs tensor '%s' from the target, which does not have it",
-                    __func__, name.c_str()));
-    }
-
-    // used directly, so the shapes must agree exactly
-    size_t dim = 0;
-    for (const int64_t n : ne) {
-        if (dim >= GGML_MAX_DIMS || src->ne[dim] != n) {
-            throw std::runtime_error(format("%s: draft and target disagree on '%s': target has %s, draft wants %s",
-                        __func__, name.c_str(), llama_format_tensor_shape(src).c_str(), llama_format_tensor_shape(ne).c_str()));
-        }
-        dim++;
-    }
-    for (; dim < GGML_MAX_DIMS; dim++) {
-        if (src->ne[dim] != 1) {
-            throw std::runtime_error(format("%s: draft and target disagree on '%s': target has %s, draft wants %s",
-                        __func__, name.c_str(), llama_format_tensor_shape(src).c_str(), llama_format_tensor_shape(ne).c_str()));
-        }
-    }
-
-    LLAMA_LOG_INFO("%s: tensor %s taken from the target model\n", __func__, name.c_str());
-
-    // not counted in n_created/size_data: not in this file, neither allocated nor freed here
-    return src;
 }
 
 struct ggml_tensor * llama_model_loader::create_tensor(
@@ -1386,11 +1324,6 @@ struct ggml_tensor * llama_model_loader::create_tensor(
         ggml_tensor * ret = ggml_dup_tensor(ctx, &t_meta);
         ggml_set_name(ret, tn.str().c_str());
         return ret;
-    }
-
-    // must precede check_tensor_dims, and must win over the arch fallback that ties output to token_embd
-    if (ggml_tensor * shared = borrow_shared_tensor(tn, ne)) {
-        return shared;
     }
 
     LLAMA_LOG_DEBUG("%s: loading tensor %s\n", __func__, tn.str().c_str());
