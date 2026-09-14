@@ -2113,8 +2113,6 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
         if (ec != GGML_STATUS_SUCCESS) {
             return ec;
         }
-
-        prev_backend_id = split_backend_id;
     }
 
     return GGML_STATUS_SUCCESS;

@@ -256,24 +256,6 @@ struct llama_layer_switch_lora {
     struct ggml_tensor * b_down = nullptr;
 };
 
-struct llama_layer_switch_lora {
-    struct ggml_tensor * a_q    = nullptr;
-    struct ggml_tensor * b_q    = nullptr;
-    struct ggml_tensor * a_k    = nullptr;
-    struct ggml_tensor * b_k    = nullptr;
-    struct ggml_tensor * a_v    = nullptr;
-    struct ggml_tensor * b_v    = nullptr;
-    struct ggml_tensor * a_o    = nullptr;
-    struct ggml_tensor * b_o    = nullptr;
-
-    struct ggml_tensor * a_gate = nullptr;
-    struct ggml_tensor * b_gate = nullptr;
-    struct ggml_tensor * a_up   = nullptr;
-    struct ggml_tensor * b_up   = nullptr;
-    struct ggml_tensor * a_down = nullptr;
-    struct ggml_tensor * b_down = nullptr;
-};
-
 struct llama_layer {
     // normalization
     struct ggml_tensor * attn_norm       = nullptr;
