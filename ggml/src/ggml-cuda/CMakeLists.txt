@@ -116,8 +116,13 @@ if (CUDAToolkit_FOUND)
     list(APPEND GGML_SOURCES_CUDA ${SRCS})
 
     # TurboQuant KV-cache FA instances: upstream's generator validates against its
-    # own FA_TYPES list, which has no turbo types, so these are appended directly.
     list(APPEND GGML_SOURCES_CUDA
+        template-instances/fattn-vec-instance-f16-turbo2_0.cu
+        template-instances/fattn-vec-instance-f16-turbo3_0.cu
+        template-instances/fattn-vec-instance-f16-turbo4_0.cu
+        template-instances/fattn-vec-instance-q8_0-turbo2_0.cu
+        template-instances/fattn-vec-instance-q8_0-turbo3_0.cu
+        template-instances/fattn-vec-instance-q8_0-turbo4_0.cu
         template-instances/fattn-vec-instance-turbo2_0-f16.cu
         template-instances/fattn-vec-instance-turbo2_0-q8_0.cu
         template-instances/fattn-vec-instance-turbo2_0-turbo2_0.cu
@@ -133,6 +138,33 @@ if (CUDAToolkit_FOUND)
         template-instances/fattn-vec-instance-turbo4_0-turbo2_0.cu
         template-instances/fattn-vec-instance-turbo4_0-turbo3_0.cu
         template-instances/fattn-vec-instance-turbo4_0-turbo4_0.cu)
+    # own FA_TYPES list, which has no turbo types, so these are appended directly.
+
+    # The turbo instances above are always compiled, so tell fattn.cu they exist.
+    # Upstream's generator only emits these for the combinations it knows about.
+    add_compile_definitions(
+    GGML_CUDA_FA_F16_TURBO2_0=1
+    GGML_CUDA_FA_F16_TURBO3_0=1
+    GGML_CUDA_FA_F16_TURBO4_0=1
+    GGML_CUDA_FA_Q8_0_TURBO2_0=1
+    GGML_CUDA_FA_Q8_0_TURBO3_0=1
+    GGML_CUDA_FA_Q8_0_TURBO4_0=1
+    GGML_CUDA_FA_TURBO2_0_F16=1
+    GGML_CUDA_FA_TURBO2_0_Q8_0=1
+    GGML_CUDA_FA_TURBO2_0_TURBO2_0=1
+    GGML_CUDA_FA_TURBO2_0_TURBO3_0=1
+    GGML_CUDA_FA_TURBO2_0_TURBO4_0=1
+    GGML_CUDA_FA_TURBO3_0_F16=1
+    GGML_CUDA_FA_TURBO3_0_Q8_0=1
+    GGML_CUDA_FA_TURBO3_0_TURBO2_0=1
+    GGML_CUDA_FA_TURBO3_0_TURBO3_0=1
+    GGML_CUDA_FA_TURBO3_0_TURBO4_0=1
+    GGML_CUDA_FA_TURBO4_0_F16=1
+    GGML_CUDA_FA_TURBO4_0_Q8_0=1
+    GGML_CUDA_FA_TURBO4_0_TURBO2_0=1
+    GGML_CUDA_FA_TURBO4_0_TURBO3_0=1
+    GGML_CUDA_FA_TURBO4_0_TURBO4_0=1)
+
 
     ggml_add_backend_library(ggml-cuda
                              ${GGML_HEADERS_CUDA}
