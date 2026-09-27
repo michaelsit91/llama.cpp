@@ -31,6 +31,15 @@ ARG GCC_VERSION
 # CUDA architecture to build for (defaults to all supported archs)
 ARG CUDA_DOCKER_ARCH=default
 
+# Build identity, passed in rather than read from git. When the source is a git
+# submodule, .git is a gitlink whose objects live outside the build context, so
+# cmake/build-info.cmake's `git rev-parse` finds nothing and the binary reports
+# "build 0, commit unknown" regardless of what was compiled. CMakeLists honours
+# these two as explicit overrides (CMakeLists.txt:153-158), so the caller can
+# supply what git cannot reach.
+ARG LLAMA_BUILD_COMMIT=unknown
+ARG LLAMA_BUILD_NUMBER=0
+
 RUN apt-get update && \
     apt-get install -y gcc-${GCC_VERSION} g++-${GCC_VERSION} build-essential cmake python3 python3-pip git libssl-dev libgomp1
 
@@ -45,7 +54,7 @@ COPY --from=web /app/tools/ui/dist tools/ui/dist
 RUN if [ "${CUDA_DOCKER_ARCH}" != "default" ]; then \
     export CMAKE_ARGS="-DCMAKE_CUDA_ARCHITECTURES=${CUDA_DOCKER_ARCH}"; \
     fi && \
-    cmake -B build -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON -DLLAMA_BUILD_TESTS=OFF ${CMAKE_ARGS} -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined . && \
+    cmake -B build -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DGGML_BACKEND_DL=ON -DGGML_CPU_ALL_VARIANTS=ON -DLLAMA_BUILD_TESTS=OFF ${CMAKE_ARGS} -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined -DLLAMA_BUILD_COMMIT=${LLAMA_BUILD_COMMIT} -DLLAMA_BUILD_NUMBER=${LLAMA_BUILD_NUMBER} . && \
     cmake --build build --config Release -j$(nproc)
 
 RUN mkdir -p /app/lib && \
